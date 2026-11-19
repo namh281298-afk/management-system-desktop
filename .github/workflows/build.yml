@@ -21,13 +21,26 @@ jobs:
         with:
           node-version: 20
       - run: npm install
-      - run: npm run ${{ matrix.script }}
+      - name: Tắt Spotlight (tránh lỗi hdiutil trên macOS)
+        if: runner.os == 'macOS'
+        run: sudo mdutil -a -i off || true
+      - name: Build (tự thử lại tối đa 3 lần)
+        shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: |
+          for i in 1 2 3; do
+            npm run ${{ matrix.script }} && exit 0
+            echo "Lần $i lỗi, thử lại..."
+            sleep 10
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: management-system-${{ matrix.os }}
           path: |
             dist/*.exe
             dist/*.dmg
+            dist/*.zip
           if-no-files-found: error
