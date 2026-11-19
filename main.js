@@ -73,12 +73,13 @@ function createWindow() {
   });
   win.on('close', (e) => {
     saveState();
-    if (!quitting && process.platform !== 'darwin') { e.preventDefault(); win.hide(); }   // Windows: thu xuống khay để vẫn nhận thông báo
+    if (!quitting) { e.preventDefault(); win.hide(); }   // đóng cửa sổ chỉ ẩn đi (Windows: xuống khay, macOS: vẫn chạy trong Dock) để vẫn nhận thông báo
   });
+  win.on('closed', () => { win = null; });
   win.on('resize', saveState); win.on('move', saveState);
 }
 
-function showWin() { if (!win) createWindow(); else { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } }
+function showWin() { if (!win || win.isDestroyed()) createWindow(); else { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } }
 
 function buildMenu() {
   const mac = process.platform === 'darwin';
@@ -86,8 +87,8 @@ function buildMenu() {
     ...(mac ? [{ role: 'appMenu' }] : []),
     { role: 'editMenu' },   // cần để Ctrl/Cmd + C, V, X hoạt động
     { label: 'Xem', submenu: [
-      { label: 'Tải lại', accelerator: 'CmdOrCtrl+R', click: () => win && win.webContents.reload() },
-      { label: 'Tải lại (xoá bộ nhớ đệm)', accelerator: 'CmdOrCtrl+Shift+R', click: () => win && win.webContents.reloadIgnoringCache() },
+      { label: 'Tải lại', accelerator: 'CmdOrCtrl+R', click: () => win && !win.isDestroyed() && win.webContents.reload() },
+      { label: 'Tải lại (xoá bộ nhớ đệm)', accelerator: 'CmdOrCtrl+Shift+R', click: () => win && !win.isDestroyed() && win.webContents.reloadIgnoringCache() },
       { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'togglefullscreen' },
       { type: 'separator' }, { label: 'Tự khởi động cùng máy (chạy nền)', type: 'checkbox', checked: autoStartOn(), click: (i) => setAutoStart(i.checked) }
     ] },
@@ -99,7 +100,7 @@ function buildMenu() {
 function createTrayMenu() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Mở ' + TITLE, click: showWin },
-    { label: 'Tải lại', click: () => win && win.webContents.reload() },
+    { label: 'Tải lại', click: () => win && !win.isDestroyed() && win.webContents.reload() },
     { type: 'separator' },
     { label: 'Tự khởi động cùng máy (chạy nền)', type: 'checkbox', checked: autoStartOn(), click: (i) => setAutoStart(i.checked) },
     { type: 'separator' },
